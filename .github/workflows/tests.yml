@@ -8,8 +8,7 @@ on: [pull_request]
 jobs:
   build:
 
-    runs-on:
-      - macos-latest
+    runs-on: ubuntu-latest
 
     env:
       NODE_ENV: production
