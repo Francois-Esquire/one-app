@@ -17,7 +17,10 @@
 import Joi from 'joi';
 import semver from 'semver';
 
+import { setStateConfig, getClientStateConfig, getServerStateConfig } from '../stateConfig';
+
 import { webManifestSchema } from './webManifest';
+import { provideStateConfigSchema } from './stateConfig';
 
 const checkAppVersion = (appVersion, compatVersion) => semver
   .satisfies(appVersion, compatVersion, { includePrerelease: true });
@@ -46,6 +49,19 @@ export const webManifestExtension = Joi.extend({
     if (typeof value === 'function') {
       return { value: value(helpers.prefs.context.clientStateConfig) };
     }
+    return { value };
+  },
+});
+
+export const provideStateConfigExtension = Joi.extend({
+  type: 'stateConfig',
+  base: provideStateConfigSchema,
+  validate(value, helpers) {
+    setStateConfig(value);
+    // eslint-disable-next-line no-param-reassign
+    helpers.prefs.context.clientStateConfig = getClientStateConfig();
+    // eslint-disable-next-line no-param-reassign
+    helpers.prefs.context.serverStateConfig = getServerStateConfig();
     return { value };
   },
 });

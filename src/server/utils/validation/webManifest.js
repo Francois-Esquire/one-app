@@ -22,7 +22,10 @@ export const webManifestSchema = Joi.object().keys({
   description: Joi.string(),
   lang: Joi.string(),
   scope: Joi.string().pattern(/^\//),
-  start_url: Joi.string().pattern(/^\//),
+  start_url: Joi.alternatives(
+    Joi.string().uri(),
+    Joi.string().pattern(/^\//)
+  ),
   theme_color: Joi.alternatives(
     Joi.string(),
     Joi.string().hex()

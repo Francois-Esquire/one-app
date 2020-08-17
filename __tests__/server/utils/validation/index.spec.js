@@ -18,18 +18,6 @@ import { validateRootModuleAppConfig, validateChildModuleAppConfig } from '../..
 
 const baseValidationContext = {
   appVersion: '5.0.0',
-  clientStateConfig: {
-    cdnUrl: 'https://cdn.example.com/',
-  },
-  serverStateConfig: {
-    cdnUrl: 'https://cdn.example.com/',
-  },
-  providedExternals: {
-    'some-library': {
-      version: '9.8.7',
-      module: {},
-    },
-  },
 };
 
 describe('root module app config validation', () => {
@@ -49,13 +37,13 @@ describe('root module app config validation', () => {
         },
       },
       provideStateConfig: {
-        randomApi: {
+        startUrl: {
           server: 'https://api.example.com',
           client: 'https://example.com/api',
         },
         clientValue: {
           client: 'only-for-client',
-          server: null,
+          server: 'only-for-server',
         },
       },
       csp: "default-src 'self';",
@@ -66,12 +54,18 @@ describe('root module app config validation', () => {
         escapeHatch: false,
         recoveryMode: false,
         scope: '/',
-        webManifest: { name: 'One App Test' },
+        webManifest: (config) => ({ name: 'One App Test', start_url: config.startUrl }),
       },
     };
 
-    expect(() => validateRootModuleAppConfig(appConfig, validationContext)).not.toThrow();
-    expect(validateRootModuleAppConfig(appConfig, validationContext)).toEqual(appConfig);
+    expect(() => validateRootModuleAppConfig(appConfig, { ...validationContext })).not.toThrow();
+    expect(validateRootModuleAppConfig(appConfig, { ...validationContext })).toEqual({
+      ...appConfig,
+      pwa: {
+        ...appConfig.pwa,
+        webManifest: { name: 'One App Test', start_url: appConfig.provideStateConfig.startUrl.client },
+      },
+    });
   });
 
   test('invalid app config', () => {
@@ -101,12 +95,13 @@ describe('root module app config validation', () => {
         escapeHatch: 0,
         recoveryMode: [],
         scope: '\\',
-        webManifest: () => ({ short_name: 'One App Test' }),
+        webManifest: { short_name: 'One App Test' },
       },
       appCompatibility: '1.0.0',
     };
 
-    expect(() => validateRootModuleAppConfig(appConfig, validationContext)).toThrow(new Error([
+    expect(
+      () => validateRootModuleAppConfig(appConfig, { ...validationContext })).toThrow(new Error([
       'some-root@1.2.3 is not compatible with this version of one-app (5.0.0), it requires "1.0.0"',
       '"provideStateConfig.missingKey.server" is required',
       '"csp" must be a valid content security policy in the Root module',
@@ -121,7 +116,8 @@ describe('root module app config validation', () => {
       '"pwa.webManifest.name" is required',
       '"configureRequestLog" must be of type function',
       '"createSsrFetch" must be of type function',
-    ].join('. ')));
+    ].join('. '))
+    );
   });
 });
 
@@ -154,14 +150,13 @@ describe('child module app config validation', () => {
       },
     };
 
-    expect(() => validateChildModuleAppConfig(appConfig, validationContext)).not.toThrow();
-    expect(validateChildModuleAppConfig(appConfig, validationContext)).toEqual(appConfig);
+    expect(() => validateChildModuleAppConfig(appConfig, { ...validationContext })).not.toThrow();
+    expect(validateChildModuleAppConfig(appConfig, { ...validationContext })).toEqual(appConfig);
   });
 
   test('invalid app config', () => {
     const appConfig = {
       appCompatibility: '1.0.0',
-      providedExternals: {},
       validateStateConfig: () => true,
       requiredSafeRequestRestrictedAttributes: {
         headers: {},
@@ -173,13 +168,21 @@ describe('child module app config validation', () => {
           version: '3.2.1',
         },
       },
+      providedExternals: {
+        'some-library': {
+          version: '9.8.7',
+          module: {},
+        },
+      },
     };
 
-    expect(() => validateChildModuleAppConfig(appConfig, validationContext)).toThrow(new Error([
-      '"validateStateConfig" must be of type object',
-      '"requiredSafeRequestRestrictedAttributes.headers" must be an array',
-      '"requiredSafeRequestRestrictedAttributes.cookies" must be an array',
-      'child-module@1.2.3 is not compatible with this version of one-app (5.0.0), it requires "1.0.0"',
-    ].join('. ')));
+    expect(
+      () => validateChildModuleAppConfig(appConfig, { ...validationContext }))
+      .toThrow(new Error([
+        '"validateStateConfig" must be of type object',
+        '"requiredSafeRequestRestrictedAttributes.headers" must be an array',
+        '"requiredSafeRequestRestrictedAttributes.cookies" must be an array',
+        'child-module@1.2.3 is not compatible with this version of one-app (5.0.0), it requires "1.0.0"',
+      ].join('. ')));
   });
 });

@@ -116,7 +116,9 @@ export default function onModuleLoad({
       requiredSafeRequestRestrictedAttributes,
     } = validateChildModuleAppConfig(moduleConfig, validationContext);
 
-    validateSafeRequestRestrictedAttributes(requiredSafeRequestRestrictedAttributes);
+    if (requiredSafeRequestRestrictedAttributes) {
+      validateSafeRequestRestrictedAttributes(requiredSafeRequestRestrictedAttributes);
+    }
 
     if (validateStateConfig) {
       validateConfig(validateStateConfig, {

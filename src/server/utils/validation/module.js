@@ -16,8 +16,8 @@
 
 import Joi from 'joi';
 
-import { appCompatibilityExtension } from './extensions';
-import { provideStateConfigSchema, validateStateConfigSchema } from './stateConfig';
+import { appCompatibilityExtension, provideStateConfigExtension } from './extensions';
+import { validateStateConfigSchema } from './stateConfig';
 import { safeRequestSchema } from './safeRequest';
 import { corsOriginsSchema } from './cors';
 import { cspSchema } from './csp';
@@ -26,7 +26,7 @@ import { pwaSchema } from './pwa';
 export const rootModuleSchema = Joi.object().keys({
   providedExternals: Joi.any(),
   appCompatibility: appCompatibilityExtension.semver().valid(),
-  provideStateConfig: provideStateConfigSchema,
+  provideStateConfig: provideStateConfigExtension.stateConfig(),
   csp: cspSchema,
   corsOrigins: corsOriginsSchema,
   eventLoopDelayThreshold: Joi.number().allow(Infinity),
