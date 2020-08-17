@@ -25,6 +25,8 @@ import { setConfigureRequestLog } from './logging/serverMiddleware';
 import { setCreateSsrFetch } from './createSsrFetch';
 import { setEventLoopDelayThreshold } from './createCircuitBreaker';
 import { configurePWA } from '../middleware/pwa';
+import { updateCSP } from '../middleware/csp';
+import { validateRootModuleAppConfig, validateChildModuleAppConfig } from './validation';
 
 // Trim build hash
 const { buildVersion } = readJsonFile('../../../.build-meta.json');
@@ -67,89 +69,83 @@ export default function onModuleLoad({
   moduleName,
 }) {
   const {
-    [CONFIGURATION_KEY]: {
-      // Root Module Specific
-      providedExternals,
-      provideStateConfig,
-      csp,
-      corsOrigins,
-      configureRequestLog,
-      extendSafeRequestRestrictedAttributes = {},
-      createSsrFetch,
-      eventLoopDelayThreshold,
-      pwa,
-      // Child Module Specific
-      requiredExternals,
-      validateStateConfig,
-      requiredSafeRequestRestrictedAttributes = {},
-      // Any Module
-      appCompatibility,
-    } = {},
-    [META_DATA_KEY]: metaData,
+    [CONFIGURATION_KEY]: moduleConfig = {},
+    [META_DATA_KEY]: metaData = {},
   } = module;
-
-  if (appCompatibility) {
-    if (!semver.satisfies(appVersion, appCompatibility, { includePrerelease: true })) {
-      throw new Error(`${moduleName}@${metaData.version} is not compatible with this version of one-app (${appVersion}), it requires ${appCompatibility}.`);
-    }
-  }
 
   const serverStateConfig = getServerStateConfig();
   const clientStateConfig = getClientStateConfig();
 
-  if (validateStateConfig) {
-    validateConfig(validateStateConfig, {
-      server: serverStateConfig,
-      client: clientStateConfig,
-    });
-  }
+  const validationContext = {
+    moduleName,
+    moduleVersion: metaData.version,
+    appVersion,
+    serverStateConfig,
+    clientStateConfig,
+  };
 
   if (moduleName === serverStateConfig.rootModuleName) {
-    if (!csp) {
-      throw new Error('Root module must provide a valid content security policy');
-    }
+    const {
+      csp,
+      provideStateConfig,
+      corsOrigins,
+      configureRequestLog,
+      extendSafeRequestRestrictedAttributes,
+      createSsrFetch,
+      eventLoopDelayThreshold,
+      pwa,
+    } = validateRootModuleAppConfig(moduleConfig, validationContext);
+
     clearModulesUsingExternals();
+
     if (provideStateConfig) {
       setStateConfig(provideStateConfig);
     }
+
+    updateCSP(csp);
     setCorsOrigins(corsOrigins);
     extendRestrictedAttributesAllowList(extendSafeRequestRestrictedAttributes);
     setConfigureRequestLog(configureRequestLog);
     setCreateSsrFetch(createSsrFetch);
     setEventLoopDelayThreshold(eventLoopDelayThreshold);
-    logModuleLoad(moduleName, metaData.version);
     configurePWA(pwa);
-    return;
-  }
+  } else {
+    const {
+      requiredExternals,
+      validateStateConfig,
+      requiredSafeRequestRestrictedAttributes,
+    } = validateChildModuleAppConfig(moduleConfig, validationContext);
 
-  if (providedExternals) {
-    console.warn(
-      `Module ${moduleName} attempted to provide externals. Only the root module can provide externals.`
-    );
-  }
+    validateSafeRequestRestrictedAttributes(requiredSafeRequestRestrictedAttributes);
 
-  if (requiredExternals) {
-    const messages = [];
-    const RootModule = global.getTenantRootModule();
-
-    Object.entries(requiredExternals).forEach(([externalName, requestedExternalVersion]) => {
-      const providedExternal = RootModule[CONFIGURATION_KEY].providedExternals[externalName];
-
-      if (!providedExternal) {
-        messages.push(`External '${externalName}' is required by ${moduleName}, but is not provided by the root module`);
-      } else if (!semver.satisfies(providedExternal.version, requestedExternalVersion)) {
-        messages.push(`${externalName}@${requestedExternalVersion} is required by ${moduleName}, but the root module provides ${providedExternal.version}`);
-      }
-    });
-
-    if (messages.length !== 0) {
-      throw new Error(messages.join('\n'));
+    if (validateStateConfig) {
+      validateConfig(validateStateConfig, {
+        server: serverStateConfig,
+        client: clientStateConfig,
+      });
     }
 
-    registerModuleUsingExternals(moduleName);
-  }
+    if (requiredExternals) {
+      const messages = [];
+      const RootModule = global.getTenantRootModule();
 
-  validateSafeRequestRestrictedAttributes(requiredSafeRequestRestrictedAttributes);
+      Object.entries(requiredExternals).forEach(([externalName, requestedExternalVersion]) => {
+        const providedExternal = RootModule[CONFIGURATION_KEY].providedExternals[externalName];
+
+        if (!providedExternal) {
+          messages.push(`External '${externalName}' is required by ${moduleName}, but is not provided by the root module`);
+        } else if (!semver.satisfies(providedExternal.version, requestedExternalVersion)) {
+          messages.push(`${externalName}@${requestedExternalVersion} is required by ${moduleName}, but the root module provides ${providedExternal.version}`);
+        }
+      });
+
+      if (messages.length !== 0) {
+        throw new Error(messages.join('\n'));
+      }
+
+      registerModuleUsingExternals(moduleName);
+    }
+  }
 
   logModuleLoad(moduleName, metaData.version);
 }

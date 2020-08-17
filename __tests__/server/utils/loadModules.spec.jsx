@@ -16,14 +16,10 @@
 
 import { getModule } from 'holocron';
 import { updateModuleRegistry } from 'holocron/server';
-import { CONFIGURATION_KEY } from '../../../src/server/utils/onModuleLoad';
 import loadModules from '../../../src/server/utils/loadModules';
 import { updateCSP } from '../../../src/server/middleware/csp';
 import { setClientModuleMapCache, getClientModuleMapCache } from '../../../src/server/utils/clientModuleMapCache';
 import addBaseUrlToModuleMap from '../../../src/server/utils/addBaseUrlToModuleMap';
-
-// This named export exists only on the mock
-// eslint-disable-next-line import/named
 
 jest.mock('holocron');
 jest.mock(
@@ -112,21 +108,6 @@ describe('loadModules', () => {
     updateModuleRegistry.mockImplementationOnce(() => ({}));
     await loadModules();
     expect(getClientModuleMapCache()).toMatchSnapshot();
-  });
-
-  it('updates CSP when csp is set on root module if root module is loaded', async () => {
-    RootModule[CONFIGURATION_KEY] = {
-      csp: "default-src 'none';",
-    };
-
-    await loadModules();
-    expect(updateCSP).toHaveBeenCalledWith("default-src 'none';");
-  });
-
-  it('calls updateCSP even when csp is not set', async () => {
-    delete RootModule[CONFIGURATION_KEY].csp;
-    await loadModules();
-    expect(updateCSP).toHaveBeenCalledWith(undefined);
   });
 
   describe('when root module not loaded', () => {

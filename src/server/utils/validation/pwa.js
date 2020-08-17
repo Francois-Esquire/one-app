@@ -14,16 +14,15 @@
  * permissions and limitations under the License.
  */
 
-import { getServerPWAConfig } from './config';
+import Joi from 'joi';
 
-export default function serviceWorkerMiddleware() {
-  return function serviceWorkerMiddlewareHandler(req, res, next) {
-    const { serviceWorker, serviceWorkerScope, serviceWorkerScript } = getServerPWAConfig();
-    if (serviceWorker === false) return next();
-    return res
-      .type('js')
-      .set('Service-Worker-Allowed', serviceWorkerScope)
-      .set('Cache-Control', 'no-store, no-cache')
-      .send(serviceWorkerScript);
-  };
-}
+import { webManifestExtension } from './extensions';
+
+// eslint-disable-next-line import/prefer-default-export
+export const pwaSchema = Joi.object().keys({
+  serviceWorker: Joi.boolean(),
+  recoveryMode: Joi.boolean(),
+  escapeHatch: Joi.boolean(),
+  scope: Joi.string().pattern(/^\//),
+  webManifest: webManifestExtension.manifest(),
+});

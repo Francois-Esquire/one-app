@@ -31,6 +31,7 @@ import { setConfigureRequestLog } from '../../../src/server/utils/logging/server
 import { setCreateSsrFetch } from '../../../src/server/utils/createSsrFetch';
 import { getEventLoopDelayThreshold } from '../../../src/server/utils/createCircuitBreaker';
 import { configurePWA } from '../../../src/server/middleware/pwa';
+import { updateCSP } from '../../../src/server/middleware/csp';
 
 jest.mock('../../../src/server/utils/stateConfig', () => ({
   setStateConfig: jest.fn(),
@@ -51,6 +52,9 @@ jest.mock('../../../src/server/utils/safeRequest', () => ({
 }));
 jest.mock('../../../src/server/middleware/pwa', () => ({
   configurePWA: jest.fn(),
+}));
+jest.mock('../../../src/server/middleware/csp', () => ({
+  updateCSP: jest.fn(),
 }));
 
 const RootModule = () => <h1>Hello, world</h1>;
@@ -283,6 +287,19 @@ describe('onModuleLoad', () => {
     });
 
     expect(callOnModuleLoad).toThrowErrorMatchingSnapshot();
+  });
+
+  it('updates CSP when csp is set on root module', async () => {
+    onModuleLoad({
+      module: {
+        [CONFIGURATION_KEY]: {
+          csp: "default-src 'none';",
+        },
+        [META_DATA_KEY]: { version: '1.0.14' },
+      },
+      moduleName: 'some-root',
+    });
+    expect(updateCSP).toHaveBeenCalledWith("default-src 'none';");
   });
 
   it('updates createSsrFetch when added on the root module', () => {

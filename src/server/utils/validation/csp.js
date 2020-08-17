@@ -14,16 +14,9 @@
  * permissions and limitations under the License.
  */
 
-import { getServerPWAConfig } from './config';
+import Joi from 'joi';
 
-export default function serviceWorkerMiddleware() {
-  return function serviceWorkerMiddlewareHandler(req, res, next) {
-    const { serviceWorker, serviceWorkerScope, serviceWorkerScript } = getServerPWAConfig();
-    if (serviceWorker === false) return next();
-    return res
-      .type('js')
-      .set('Service-Worker-Allowed', serviceWorkerScope)
-      .set('Cache-Control', 'no-store, no-cache')
-      .send(serviceWorkerScript);
-  };
-}
+// eslint-disable-next-line import/prefer-default-export
+export const cspSchema = Joi.string().required().messages({
+  'any.required': '"csp" must be a valid content security policy in the Root module',
+});

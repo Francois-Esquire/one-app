@@ -14,16 +14,24 @@
  * permissions and limitations under the License.
  */
 
-import { getServerPWAConfig } from './config';
+import { rootModuleSchema, childModuleSchema } from './module';
 
-export default function serviceWorkerMiddleware() {
-  return function serviceWorkerMiddlewareHandler(req, res, next) {
-    const { serviceWorker, serviceWorkerScope, serviceWorkerScript } = getServerPWAConfig();
-    if (serviceWorker === false) return next();
-    return res
-      .type('js')
-      .set('Service-Worker-Allowed', serviceWorkerScope)
-      .set('Cache-Control', 'no-store, no-cache')
-      .send(serviceWorkerScript);
-  };
+export function validateSchema(schema, validationTarget, options) {
+  const { error, value, warning } = schema.validate(
+    validationTarget,
+    { ...options, abortEarly: false }
+  );
+  if (error) throw error;
+  if (warning) {
+    console.warn(warning);
+  }
+  return value;
+}
+
+export function validateRootModuleAppConfig(appConfig, context) {
+  return validateSchema(rootModuleSchema, appConfig, { context });
+}
+
+export function validateChildModuleAppConfig(appConfig, context) {
+  return validateSchema(childModuleSchema, appConfig, { context });
 }

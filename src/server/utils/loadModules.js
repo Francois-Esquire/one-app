@@ -14,21 +14,17 @@
  * permissions and limitations under the License.
  */
 
-import { getModule } from 'holocron';
 import { updateModuleRegistry } from 'holocron/server';
 
-import onModuleLoad, { CONFIGURATION_KEY } from './onModuleLoad';
+import onModuleLoad from './onModuleLoad';
 import batchModulesToUpdate from './batchModulesToUpdate';
 import getModulesToUpdate from './getModulesToUpdate';
-import { getServerStateConfig } from './stateConfig';
 import { setClientModuleMapCache } from './clientModuleMapCache';
-import { updateCSP } from '../middleware/csp';
 import addBaseUrlToModuleMap from './addBaseUrlToModuleMap';
 
 const loadModules = async () => {
   const moduleMapResponse = await fetch(process.env.HOLOCRON_MODULE_MAP_URL);
   const moduleMap = addBaseUrlToModuleMap(await moduleMapResponse.json());
-  const serverConfig = getServerStateConfig();
 
   const loadedModules = await updateModuleRegistry({
     moduleMap,
@@ -42,16 +38,6 @@ const loadModules = async () => {
   if (loadedModuleNames.length > 0) {
     setClientModuleMapCache(moduleMap);
   }
-
-  const rootModuleLoaded = loadedModuleNames.includes(serverConfig.rootModuleName);
-
-  if (!rootModuleLoaded) {
-    return loadedModules;
-  }
-
-  const RootModule = getModule(serverConfig.rootModuleName);
-  const { [CONFIGURATION_KEY]: { csp } = {} } = RootModule;
-  updateCSP(csp);
 
   return loadedModules;
 };
